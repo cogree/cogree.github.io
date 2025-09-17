@@ -64,6 +64,17 @@
     async function fetchBuoyData() {
       try {
         const response = await fetch(buoyUrl);
+
+		/*	
+  			DATA FEED FORMAT:
+			#YY  MM DD hh mm WDIR WSPD GST  WVHT   DPD   APD MWD   PRES  ATMP  WTMP  DEWP  VIS PTDY  TIDE
+			#yr  mo dy hr mn degT m/s  m/s     m   sec   sec degT   hPa  degC  degC  degC  nmi  hPa    ft
+			2025 09 17 18 20  20  4.0  5.0   0.3     3    MM  55     MM  21.9  23.1  19.9   MM   MM    MM
+			2025 09 17 18 10  30  4.0  5.0   0.3     3    MM  48     MM  21.8  23.0  20.1   MM   MM    MM
+			2025 09 17 18 00  30  4.0  5.0   0.3     3    MM  46     MM  21.8  23.0  20.2   MM   MM    MM
+			2025 09 17 17 50  30  4.0  5.0   0.3     3    MM  46     MM  21.7  22.4  20.1   MM   MM    MM
+			2025 09 17 17 40  30  3.0  4.0   0.2    MM    MM  52     MM  21.7  22.5  20.1   MM   MM    MM
+ 		*/
         const text = await response.text();
         const lines = text.trim().split("\n");
         const recent = lines.slice(2, 50); // ~48 hrs
@@ -80,7 +91,7 @@
           const wtmpC = parseFloat(parts[14]);
 
           const timestamp = new Date(`${YYYY}-${MM}-${DD}T${hh}:00:00Z`);
-          times.push(timestamp.toLocaleString([], {month:'short', day:'numeric', hour:'2-digit'}));
+          times.push(timestamp.toLocaleString());
           waveHeights.push((waveM * 3.281).toFixed(2));
           waterTemps.push(((wtmpC * 9/5) + 32).toFixed(1));
         });
@@ -141,8 +152,25 @@
 
         waveChart = new Chart(document.getElementById("waveChart"), {
           type: "line",
-          data: { labels: times.reverse(), datasets: [{ label: "Wave Height (ft)", data: waveHeights.reverse(), borderColor: "blue", fill: false }] },
-          options: { responsive: true, scales: { y: { beginAtZero: true, suggestedMax: 5, stepSize: 1 } } }
+          data: { 
+			  labels: times.reverse(),
+			  datasets: [{ 
+				  label: "Wave Height (ft)",
+				  data: waveHeights.reverse(),
+				  borderColor: "blue",
+				  fill: false
+				}]
+		  },
+          options: {
+			  responsive: true,
+			  scales: {
+				  y: {
+					  beginAtZero: true,
+					  suggestedMax: 5,
+					  stepSize: 1
+				  }
+			  }
+		  }
         });
         tempChart = new Chart(document.getElementById("tempChart"), {
           type: "line",
