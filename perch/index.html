@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Lake Erie Perch Fishing Conditions</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f4f4f4; color:#333; margin:20px; }
+    h1 { text-align:center; }
+    .container { max-width:1000px; margin:auto; background:white; padding:20px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.2); }
+    img { width:100%; border-radius:8px; }
+    .grade { font-size:2em; text-align:center; margin:20px 0; font-weight:bold; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th, td { padding:8px; border-bottom:1px solid #ccc; text-align:left; }
+    th { background:#f0f0f0; }
+    canvas { margin-top:20px; }
+    .A { color:green; }
+    .B { color:#4CAF50; }
+    .C { color:orange; }
+    .D { color:#E67E22; }
+    .F { color:red; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Lake Erie Perch Fishing Conditions</h1>
+
+    <h2>Live Buoy Cam</h2>
+    <iframe src="https://api.allorigins.win/raw?url=https://www.ndbc.noaa.gov/buoycam.php?station=45005" 
+    style="width:100%; min-height:350px; border:0;"
+	scrolling="no"
+    title="Buoy Cam 45005">
+	</iframe>
+	
+	<h2>Fishing Condition Grade</h2>
+    <div class="grade" id="grade">--</div>
+	<p style="text-align:center;" id="gradeDesc">Loading conditions...</p>
+
+    <h2>Latest Buoy Data (Imperial Units)</h2>
+    <table>
+      <tr><th>Measurement</th><th>Value</th></tr>
+      <tr><td>Water Temperature</td><td id="waterTemp">--</td></tr>
+      <tr><td>Air Temperature</td><td id="airTemp">--</td></tr>
+      <tr><td>Wind Speed</td><td id="windSpeed">--</td></tr>
+      <tr><td>Wave Height</td><td id="waveHeight">--</td></tr>
+      <tr><td>Pressure</td><td id="pressure">--</td></tr>
+    </table>
+
+    <h2>Wave Height (last 48 hrs)</h2>
+    <canvas id="waveChart" height="200"></canvas>
+
+    <h2>Water Temperature (last 48 hrs)</h2>
+    <canvas id="tempChart" height="200"></canvas>
+  </div>
+
+  <script>
+    let waveChart, tempChart;
+	const dataBuoyId = 45203;
+	const imageBuoyId = 45005;
+	
+    const buoyUrl = "https://api.allorigins.win/raw?url=" +
+      encodeURIComponent("https://www.ndbc.noaa.gov/data/realtime2/" + dataBuoyId + ".txt");
+
+    async function fetchBuoyData() {
+      try {
+        const response = await fetch(buoyUrl);
+        const text = await response.text();
+        const lines = text.trim().split("\n");
+        const recent = lines.slice(2, 50); // ~48 hrs
+
+        const times = [];
+        const waveHeights = [];
+        const waterTemps = [];
+
+        recent.forEach(line => {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length < 15) return;
+          const YYYY = parts[0], MM = parts[1], DD = parts[2], hh = parts[3];
+          const waveM = parseFloat(parts[8]);
+          const wtmpC = parseFloat(parts[14]);
+
+          const timestamp = new Date(`${YYYY}-${MM}-${DD}T${hh}:00:00Z`);
+          times.push(timestamp.toLocaleString([], {month:'short', day:'numeric', hour:'2-digit'}));
+          waveHeights.push((waveM * 3.281).toFixed(2));
+          waterTemps.push(((wtmpC * 9/5) + 32).toFixed(1));
+        });
+
+        // Latest row
+        const latest = recent[0].trim().split(/\s+/);
+        const wspd = parseFloat(latest[6]);  // m/s
+        const gust = parseFloat(latest[7]);  // m/s
+        const pres = parseFloat(latest[12]); // hPa
+        const atmp = parseFloat(latest[13]); // °C
+        const wtmp = parseFloat(latest[14]); // °C
+        const wave = parseFloat(latest[8]);  // m
+
+        // Conversions
+        const windMph = (wspd * 2.237).toFixed(1);
+        const gustMph = (gust * 2.237).toFixed(1);
+        const pressureInHg = (pres * 0.02953).toFixed(2);
+        const airF = (atmp * 9/5 + 32).toFixed(1);
+        const waterF = (wtmp * 9/5 + 32).toFixed(1);
+        const waveFt = (wave * 3.281).toFixed(1);
+
+        // Update table
+        document.getElementById("waterTemp").textContent = `${waterF} °F`;
+        document.getElementById("airTemp").textContent = `${airF} °F`;
+        document.getElementById("windSpeed").textContent = `${windMph} mph (gusts ${gustMph} mph)`;
+        document.getElementById("waveHeight").textContent = `${waveFt} ft`;
+        document.getElementById("pressure").textContent = `${pressureInHg} inHg`;
+
+        // Grading logic
+        let grade = "C";
+        let desc = "Fair conditions.";
+        if (waveFt <= 1.0 && windMph <= 7 && waterF >= 65 && waterF <= 72) {
+          grade = "A"; desc = "Excellent perch fishing conditions!";
+        } else if (waveFt <= 2.0 && windMph <= 12 && waterF >= 62 && waterF <= 74) {
+          grade = "B"; desc = "Good conditions with light chop.";
+        } else if (waveFt <= 3.0 && windMph <= 15 && waterF >= 58 && waterF <= 76) {
+          grade = "C"; desc = "Fishable but choppy or temps less ideal.";
+        } else if (waveFt <= 4.0 && windMph <= 20) {
+          grade = "D"; desc = "Poor conditions; rough water or warm temps impacting yields.";
+        } else {
+          grade = "F"; desc = "Unsafe or very poor perch fishing conditions.";
+        }
+        if (waterF > 75) {
+          if (grade === "A") grade = "B";
+          else if (grade === "B") grade = "C";
+          else if (grade === "C") grade = "D";
+          desc += " Water temperatures are too warm, hurting perch catches.";
+        }
+
+        const gradeDiv = document.getElementById("grade");
+        gradeDiv.textContent = grade;
+        gradeDiv.className = "grade " + grade;
+        document.getElementById("gradeDesc").textContent = desc;
+
+        // Charts
+        if (waveChart) waveChart.destroy();
+        if (tempChart) tempChart.destroy();
+
+        waveChart = new Chart(document.getElementById("waveChart"), {
+          type: "line",
+          data: { labels: times.reverse(), datasets: [{ label: "Wave Height (ft)", data: waveHeights.reverse(), borderColor: "blue", fill: false }] },
+          options: { responsive: true, scales: { y: { beginAtZero: true, suggestedMax: 5, stepSize: 1 } } }
+        });
+        tempChart = new Chart(document.getElementById("tempChart"), {
+          type: "line",
+          data: { labels: times.reverse(), datasets: [{ label: "Water Temp (°F)", data: waterTemps.reverse(), borderColor: "red", fill: false }] },
+          options: { responsive: true, scales: { y: { beginAtZero: false, suggestedMax: 80, suggestedMin: 45, stepSize: 2 } } }
+        });
+
+      } catch (err) {
+        console.error("Error fetching buoy data:", err);
+        document.getElementById("gradeDesc").textContent = "Error loading buoy data.";
+      }
+    }
+
+    fetchBuoyData();
+    setInterval(fetchBuoyData, 5 * 60 * 1000); // refresh every 5 min
+
+    // Auto-refresh buoy cam every 2 minutes
+    setInterval(() => {
+      const img = document.getElementById("buoyCam");
+      img.src = "https://www.ndbc.noaa.gov/buoycam/images/45005/45005.jpg?t=" + new Date().getTime();
+    }, 120000);
+  </script>
+</body>
+</html>
