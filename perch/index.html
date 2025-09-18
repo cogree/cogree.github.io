@@ -43,7 +43,6 @@
       <tr><td>Air Temperature</td><td id="airTemp">--</td></tr>
       <tr><td>Wind Speed</td><td id="windSpeed">--</td></tr>
       <tr><td>Wave Height</td><td id="waveHeight">--</td></tr>
-      <tr><td>Pressure</td><td id="pressure">--</td></tr>
     </table>
 
     <h2>Wave Height (last 48 hrs)</h2>
@@ -86,11 +85,11 @@
         recent.forEach(line => {
           const parts = line.trim().split(/\s+/);
           if (parts.length < 15) return;
-          const YYYY = parts[0], MM = parts[1], DD = parts[2], hh = parts[3];
+          const YYYY = parts[0], MM = parts[1], DD = parts[2], hh = parts[3]; mm = parts[4];
           const waveM = parseFloat(parts[8]);
           const wtmpC = parseFloat(parts[14]);
 
-          const timestamp = new Date(`${YYYY}-${MM}-${DD}T${hh}:00:00Z`);
+          const timestamp = new Date(`${YYYY}-${MM}-${DD}T${hh}:${mm}:00Z`);
           times.push(timestamp.toLocaleString());
           waveHeights.push((waveM * 3.281).toFixed(2));
           waterTemps.push(((wtmpC * 9/5) + 32).toFixed(1));
@@ -100,7 +99,6 @@
         const latest = recent[0].trim().split(/\s+/);
         const wspd = parseFloat(latest[6]);  // m/s
         const gust = parseFloat(latest[7]);  // m/s
-        const pres = parseFloat(latest[12]); // hPa
         const atmp = parseFloat(latest[13]); // °C
         const wtmp = parseFloat(latest[14]); // °C
         const wave = parseFloat(latest[8]);  // m
@@ -108,7 +106,6 @@
         // Conversions
         const windMph = (wspd * 2.237).toFixed(1);
         const gustMph = (gust * 2.237).toFixed(1);
-        const pressureInHg = (pres * 0.02953).toFixed(2);
         const airF = (atmp * 9/5 + 32).toFixed(1);
         const waterF = (wtmp * 9/5 + 32).toFixed(1);
         const waveFt = (wave * 3.281).toFixed(1);
@@ -118,7 +115,6 @@
         document.getElementById("airTemp").textContent = `${airF} °F`;
         document.getElementById("windSpeed").textContent = `${windMph} mph (gusts ${gustMph} mph)`;
         document.getElementById("waveHeight").textContent = `${waveFt} ft`;
-        document.getElementById("pressure").textContent = `${pressureInHg} inHg`;
 
         // Grading logic
         let grade = "C";
@@ -150,31 +146,34 @@
         if (waveChart) waveChart.destroy();
         if (tempChart) tempChart.destroy();
 
+        times.reverse();
+        waveHeights.reverse()
+
         waveChart = new Chart(document.getElementById("waveChart"), {
           type: "line",
           data: { 
-			  labels: times.reverse(),
-			  datasets: [{ 
-				  label: "Wave Height (ft)",
-				  data: waveHeights.reverse(),
-				  borderColor: "blue",
-				  fill: false
-				}]
-		  },
+			      labels: times,
+			      datasets: [{ 
+				      label: "Wave Height (ft)",
+				      data: waveHeights,
+				      borderColor: "blue",
+				      fill: false
+            }]
+		      },
           options: {
-			  responsive: true,
-			  scales: {
-				  y: {
-					  beginAtZero: true,
-					  suggestedMax: 5,
-					  stepSize: 1
-				  }
-			  }
-		  }
+            responsive: true,
+            scales: {
+              y: {
+                  beginAtZero: true,
+                  suggestedMax: 4,
+                  stepSize: 1
+              }
+            }
+          }
         });
         tempChart = new Chart(document.getElementById("tempChart"), {
           type: "line",
-          data: { labels: times.reverse(), datasets: [{ label: "Water Temp (°F)", data: waterTemps.reverse(), borderColor: "red", fill: false }] },
+          data: { labels: times, datasets: [{ label: "Water Temp (°F)", data: waterTemps, borderColor: "red", fill: false }] },
           options: { responsive: true, scales: { y: { beginAtZero: false, suggestedMax: 80, suggestedMin: 45, stepSize: 2 } } }
         });
 
