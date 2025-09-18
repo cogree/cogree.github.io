@@ -45,10 +45,10 @@
       <tr><td>Wave Height</td><td id="waveHeight">--</td></tr>
     </table>
 
-    <h2>Wave Height (last 48 hrs)</h2>
+    <h2>Wave Height</h2>
     <canvas id="waveChart" height="200"></canvas>
 
-    <h2>Water Temperature (last 48 hrs)</h2>
+    <h2>Water & Air Temperature</h2>
     <canvas id="tempChart" height="200"></canvas>
   </div>
 
@@ -81,6 +81,7 @@
         const times = [];
         const waveHeights = [];
         const waterTemps = [];
+        const airTemps = [];
 
         recent.forEach(line => {
           const parts = line.trim().split(/\s+/);
@@ -88,11 +89,13 @@
           const YYYY = parts[0], MM = parts[1], DD = parts[2], hh = parts[3]; mm = parts[4];
           const waveM = parseFloat(parts[8]);
           const wtmpC = parseFloat(parts[14]);
+          const atmpC = parseFloat(parts[13]);
 
           const timestamp = new Date(`${YYYY}-${MM}-${DD}T${hh}:${mm}:00Z`);
           times.push(timestamp.toLocaleString());
           waveHeights.push((waveM * 3.281).toFixed(2));
           waterTemps.push(((wtmpC * 9/5) + 32).toFixed(1));
+          airTemps.push(((atmpC * 9/5) + 32).toFixed(1));
         });
 
         // Latest row
@@ -119,9 +122,9 @@
         // Grading logic
         let grade = "C";
         let desc = "Fair conditions.";
-        if (waveFt <= 1.0 && windMph <= 7 && waterF >= 65 && waterF <= 72) {
+        if (waveFt <= 1.0 && windMph <= 7 && waterF >= 65 && waterF <= 70) {
           grade = "A"; desc = "Excellent perch fishing conditions!";
-        } else if (waveFt <= 2.0 && windMph <= 12 && waterF >= 62 && waterF <= 74) {
+        } else if (waveFt <= 2.0 && windMph <= 12 && waterF >= 62 && waterF <= 72) {
           grade = "B"; desc = "Good conditions with light chop.";
         } else if (waveFt <= 3.0 && windMph <= 15 && waterF >= 58 && waterF <= 76) {
           grade = "C"; desc = "Fishable but choppy or temps less ideal.";
@@ -153,12 +156,14 @@
           type: "line",
           data: { 
 			      labels: times,
-			      datasets: [{ 
-				      label: "Wave Height (ft)",
-				      data: waveHeights,
-				      borderColor: "blue",
-				      fill: false
-            }]
+			      datasets: [
+              { 
+                label: "Wave Height (ft)",
+                data: waveHeights,
+                borderColor: "blue",
+                fill: false
+              }
+            ]
 		      },
           options: {
             responsive: true,
@@ -173,8 +178,34 @@
         });
         tempChart = new Chart(document.getElementById("tempChart"), {
           type: "line",
-          data: { labels: times, datasets: [{ label: "Water Temp (°F)", data: waterTemps, borderColor: "red", fill: false }] },
-          options: { responsive: true, scales: { y: { beginAtZero: false, suggestedMax: 80, suggestedMin: 45, stepSize: 2 } } }
+          data: { 
+            labels: times,
+            datasets: [
+              {
+                label: "Air & Water Temperatures (°F)",
+                data: waterTemps,
+                borderColor: "blue",
+                fill: false
+              },
+              {
+                label: "Air Temp (°F)",
+                data: airTemps,
+                borderColor: "red",
+                fill: false
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: { 
+                beginAtZero: false,
+                suggestedMax: 80,
+                suggestedMin: 40,
+                stepSize: 2
+              }
+            }
+          }
         });
 
       } catch (err) {
