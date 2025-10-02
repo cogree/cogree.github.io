@@ -163,9 +163,11 @@
         // Charts
         if (waveChart) waveChart.destroy();
         if (tempChart) tempChart.destroy();
-
+     
         times.reverse();
         waveHeights.reverse()
+        waterTemps.reverse();
+        airTemps.reverse();
 
         waveChart = new Chart(document.getElementById("waveChart"), {
           type: "line",
