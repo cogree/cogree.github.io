@@ -5,7 +5,7 @@
   <title>Lake Erie Perch Fishing Conditions</title>
   <style>
     body { font-family: Arial, sans-serif; background:#f4f4f4; color:#333; margin:20px; }
-    h1 { text-align:center; }
+    h1, .h1 { text-align:center; }
     .container { max-width:1000px; margin:auto; background:white; padding:20px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.2); }
     img { width:100%; border-radius:8px; }
     .grade { font-size:2em; text-align:center; margin:20px 0; font-weight:bold; }
@@ -20,21 +20,31 @@
     .F { color:red; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    function corsBypass(url) {
+      return `https://cors-anywhere.herokuapp.com/${encodeURI(url)}`;
+    }
+
+    function corsBypass2(url) {
+      return `https://api.allorigins.win/raw?url=${encodeURI(url)}`;
+    }
+  </script>
 </head>
 <body>
   <div class="container">
     <h1>Lake Erie Perch Fishing Conditions</h1>
+    <p class="h1">NOTE: You may need to go <a href="https://cors-anywhere.herokuapp.com/">here</a> and click the button to load data.</p>
 
     <h2>Live Buoy Cam</h2>
-    <iframe src="https://api.allorigins.win/raw?url=https://www.ndbc.noaa.gov/buoycam.php?station=45005" 
-    style="width:100%; min-height:350px; border:0;"
-	scrolling="no"
-    title="Buoy Cam 45005">
-	</iframe>
+    <iframe id="buoyCam"
+      style="width:100%; min-height:350px; border:0;"
+      scrolling="no"
+      title="Buoy Cam 45005">
+	  </iframe>
 	
-	<h2>Fishing Condition Grade</h2>
+	  <h2>Fishing Condition Grade</h2>
     <div class="grade" id="grade">--</div>
-	<p style="text-align:center;" id="gradeDesc">Loading conditions...</p>
+	  <p style="text-align:center;" id="gradeDesc">Loading conditions...</p>    
 
     <h2>Latest Buoy Data (Imperial Units)</h2>
     <table>
@@ -54,29 +64,31 @@
 
   <script>
     let waveChart, tempChart;
-	const dataBuoyId = 45203;
-	const imageBuoyId = 45005;
-	
-    const buoyUrl = "https://api.allorigins.win/raw?url=" +
-      encodeURIComponent("https://www.ndbc.noaa.gov/data/realtime2/" + dataBuoyId + ".txt");
+    const dataBuoyId = 45203;
+    const imageBuoyId = 45005;
 
+    document.getElementById("buoyCam").src = corsBypass2(`https://www.ndbc.noaa.gov/buoycam.php?station=${imageBuoyId}`);
+    
     async function fetchBuoyData() {
       try {
-        const response = await fetch(buoyUrl);
+          let attempts = 3;
+          let success = false;
+          const buoyUrl = corsBypass(`https://www.ndbc.noaa.gov/data/realtime2/${dataBuoyId}.txt`);
 
-		/*	
-  			DATA FEED FORMAT:
-			#YY  MM DD hh mm WDIR WSPD GST  WVHT   DPD   APD MWD   PRES  ATMP  WTMP  DEWP  VIS PTDY  TIDE
-			#yr  mo dy hr mn degT m/s  m/s     m   sec   sec degT   hPa  degC  degC  degC  nmi  hPa    ft
-			2025 09 17 18 20  20  4.0  5.0   0.3     3    MM  55     MM  21.9  23.1  19.9   MM   MM    MM
-			2025 09 17 18 10  30  4.0  5.0   0.3     3    MM  48     MM  21.8  23.0  20.1   MM   MM    MM
-			2025 09 17 18 00  30  4.0  5.0   0.3     3    MM  46     MM  21.8  23.0  20.2   MM   MM    MM
-			2025 09 17 17 50  30  4.0  5.0   0.3     3    MM  46     MM  21.7  22.4  20.1   MM   MM    MM
-			2025 09 17 17 40  30  3.0  4.0   0.2    MM    MM  52     MM  21.7  22.5  20.1   MM   MM    MM
- 		*/
-        const text = await response.text();
+         do {
+            try {
+              const response = await fetch(buoyUrl);
+              text = await response.text();
+              success = true;
+            } catch (error) {
+              console.error("Error fetching buoy data:", error);
+            }
+          } while (--attempts > 0);
+            if(!success)
+              throw new Error("Failed to fetch buoy data after multiple attempts.");             
+
         const lines = text.trim().split("\n");
-        const recent = lines.slice(2, 50); // ~48 hrs
+        const recent = lines.slice(2, 68); // ~24 hrs
 
         const times = [];
         const waveHeights = [];
@@ -86,13 +98,16 @@
         recent.forEach(line => {
           const parts = line.trim().split(/\s+/);
           if (parts.length < 15) return;
-          const YYYY = parts[0], MM = parts[1], DD = parts[2], hh = parts[3]; mm = parts[4];
+          const YYYY = parts[0],
+            MM = parts[1],
+            DD = parts[2],
+            hh = parts[3],
+            mm = parts[4];
           const waveM = parseFloat(parts[8]);
           const wtmpC = parseFloat(parts[14]);
           const atmpC = parseFloat(parts[13]);
 
-          const timestamp = new Date(`${YYYY}-${MM}-${DD}T${hh}:${mm}:00Z`);
-          times.push(timestamp.toLocaleString());
+          times.push(new Date(`${YYYY}-${MM}-${DD}T${hh}:${mm}:00Z`).toLocaleString());
           waveHeights.push((waveM * 3.281).toFixed(2));
           waterTemps.push(((wtmpC * 9/5) + 32).toFixed(1));
           airTemps.push(((atmpC * 9/5) + 32).toFixed(1));
@@ -215,13 +230,6 @@
     }
 
     fetchBuoyData();
-    setInterval(fetchBuoyData, 5 * 60 * 1000); // refresh every 5 min
-
-    // Auto-refresh buoy cam every 2 minutes
-    setInterval(() => {
-      const img = document.getElementById("buoyCam");
-      img.src = "https://www.ndbc.noaa.gov/buoycam/images/45005/45005.jpg?t=" + new Date().getTime();
-    }, 120000);
   </script>
 </body>
 </html>
