@@ -7,14 +7,15 @@
     body { font-family: Arial, sans-serif; background:#f4f4f4; color:#333; margin:20px; }
     h1, .h1 { text-align:center; }
     .container { max-width:1000px; margin:auto; background:white; padding:20px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.2); }
-    img { width:100%; border-radius:8px; }
-    .grade { font-size:2.5em; text-align:center; margin:15px 0; font-weight:bold; }
-    #gradeDesc { font-size:1.5em; text-align:center; font-weight:bold; margin-bottom: 0; }
-    #gradeSubDesc { font-size:1em; text-align:center; font-weight:normal; margin-top: 5px; }
+    img { width:100%; border-radius:8px; }   
+    #gradeDesc { font-size:1.2em; text-align:center; font-weight:bold; margin: 0 0}
+    #gradeSubDesc { font-size:1em; text-align:center; font-weight:normal; margin-top: 0; }
     table { width:100%; border-collapse:collapse; margin-top:10px; }
     th, td { padding:8px; border-bottom:1px solid #ccc; text-align:left; }
     th { background:#f0f0f0; }
     canvas { margin-top:20px; }
+    section { margin-bottom:20px; }
+    .grade { font-size:2.5em; text-align:center; margin:15px 0; font-weight:bold; }
     .A { color:green; }
     .B { color:#4CAF50; }
     .C { color:orange; }
@@ -35,35 +36,36 @@
 <body>
   <div class="container">
     <h1>Lake Erie Perch Fishing Conditions</h1>
-    <p class="h1">NOTE: You may need to go <a href="https://cors-anywhere.herokuapp.com/">here</a> and click the button to load data.</p>
-
-    <h2>Live Buoy Cam</h2>
-    <iframe id="buoyCam"
-      style="width:100%; min-height:350px; border:0;"
-      scrolling="no"
-      title="Buoy Cam 45005">
-	  </iframe>
-	
-	  <h2>Fishing Condition Grade</h2>
-    <div class="grade" id="grade">--</div>
-	  <p style="text-align:center;" id="gradeDesc">Loading conditions...</p>
-    <p style="text-align:center;" id="gradeSubDesc"></p>    
-
-    <h2>Latest Buoy Data (Imperial Units)</h2>
-    <table>
-      <tr><th>Measurement</th><th>Value</th></tr>
-      <tr><td>Water Temperature</td><td id="waterTemp">--</td></tr>
-      <tr><td>Air Temperature</td><td id="airTemp">--</td></tr>
-      <tr><td>Wind Speed</td><td id="windSpeed">--</td></tr>
-      <tr><td>Wave Height</td><td id="waveHeight">--</td></tr>
-    </table>
-
-    <h2>Wave Height</h2>
-    <canvas id="waveChart" height="200"></canvas>
-
-    <h2>Water & Air Temperature</h2>
-    <canvas id="tempChart" height="200"></canvas>
-  </div>
+    <section>
+      <h2>Live Buoy Cam</h2>
+      <iframe id="buoyCam"
+        style="width:100%; min-height:350px; border:0;"
+        scrolling="no"
+        title="Buoy Cam 45005">
+      </iframe>
+	  </section>
+    <section>
+      <h2>Fishing Condition Grade</h2>
+      <div class="grade" id="grade">--</div>
+      <p style="text-align:center;" id="gradeDesc">Loading conditions...</p>
+      <p style="text-align:center;" id="gradeSubDesc"></p>    
+    </section>
+    <section>
+      <h2>Latest Buoy Data (Imperial Units)</h2>
+      <table>
+        <tr><th>Measurement</th><th>Value</th></tr>
+        <tr><td>Water Temperature</td><td id="waterTemp">--</td></tr>
+        <tr><td>Air Temperature</td><td id="airTemp">--</td></tr>
+        <tr><td>Wind Speed</td><td id="windSpeed">--</td></tr>
+        <tr><td>Wave Height</td><td id="waveHeight">--</td></tr>
+      </table>
+    </section>
+    <section>
+      <h2>Wave Height</h2>
+      <canvas id="waveChart" height="200"></canvas>
+      <h2>Water & Air Temperature</h2>
+      <canvas id="tempChart" height="200"></canvas>
+    </section>
 
   <script>
     let waveChart, tempChart;
@@ -247,9 +249,10 @@
           }
         });
 
+        //throw new Error("Debug: Data fetched and processed successfully.");
       } catch (err) {
         console.error("Error fetching buoy data:", err);
-        document.getElementById("gradeDesc").textContent = "Error loading buoy data.";
+        document.getElementById("gradeDesc").innerHTML = "Error loading buoy data.<br/> NOTE: You may need to click <a href=\"https://cors-anywhere.herokuapp.com/\">here</a> and 'accept' to load data.";
       }
     }
 
