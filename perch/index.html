@@ -8,7 +8,9 @@
     h1, .h1 { text-align:center; }
     .container { max-width:1000px; margin:auto; background:white; padding:20px; border-radius:10px; box-shadow:0 0 10px rgba(0,0,0,0.2); }
     img { width:100%; border-radius:8px; }
-    .grade { font-size:2em; text-align:center; margin:20px 0; font-weight:bold; }
+    .grade { font-size:2.5em; text-align:center; margin:15px 0; font-weight:bold; }
+    #gradeDesc { font-size:1.5em; text-align:center; font-weight:bold; margin-bottom: 0; }
+    #gradeSubDesc { font-size:1em; text-align:center; font-weight:normal; margin-top: 5px; }
     table { width:100%; border-collapse:collapse; margin-top:10px; }
     th, td { padding:8px; border-bottom:1px solid #ccc; text-align:left; }
     th { background:#f0f0f0; }
@@ -44,7 +46,8 @@
 	
 	  <h2>Fishing Condition Grade</h2>
     <div class="grade" id="grade">--</div>
-	  <p style="text-align:center;" id="gradeDesc">Loading conditions...</p>    
+	  <p style="text-align:center;" id="gradeDesc">Loading conditions...</p>
+    <p style="text-align:center;" id="gradeSubDesc"></p>    
 
     <h2>Latest Buoy Data (Imperial Units)</h2>
     <table>
@@ -135,30 +138,49 @@
         document.getElementById("waveHeight").textContent = `${waveFt} ft`;
 
         // Grading logic
+
+        let tempScore = tempScoreParabolic(waterF)
+        let windScore = Math.max(0, 100 - (windMph * 5)); // 0 at 20 mph
+        let waveScore = Math.max(0, 100 - (waveFt * 12)); // 0 at 4 ft
+
+        const tempWeight = .5;
+        const windWeight = .1;
+        const waveWeight = .4;
+
+        let overallScore = (tempScore * tempWeight) + (windScore * windWeight) + (waveScore * waveWeight);
+
+        console.log(`Scores - Temp: ${tempScore.toFixed(1)}, Wind: ${windScore.toFixed(1)}, Wave: ${waveScore.toFixed(1)}, Overall: ${overallScore.toFixed(1)}`);
+
         let grade = "C";
-        let desc = "Fair conditions.";
-        if (waveFt <= 1.0 && windMph <= 7 && waterF >= 65 && waterF <= 70) {
-          grade = "A"; desc = "Excellent perch fishing conditions!";
-        } else if (waveFt <= 2.0 && windMph <= 12 && waterF >= 62 && waterF <= 72) {
-          grade = "B"; desc = "Good conditions with light chop.";
-        } else if (waveFt <= 3.0 && windMph <= 15 && waterF >= 58 && waterF <= 76) {
-          grade = "C"; desc = "Fishable but choppy or temps less ideal.";
-        } else if (waveFt <= 4.0 && windMph <= 20) {
-          grade = "D"; desc = "Poor conditions; rough water or warm temps impacting yields.";
+        let gradeDesc = "";
+        if (overallScore >= 90) {
+          grade = "A"; gradeDesc = "Great";
+        } else if (overallScore >= 80) {
+          grade = "B"; gradeDesc = "Good";
+        } else if (overallScore >= 70) {
+          grade = "C"; gradeDesc = "OK";
+        } else if (overallScore >= 60) {
+          grade = "D"; gradeDesc = "Poor";
         } else {
-          grade = "F"; desc = "Unsafe or very poor perch fishing conditions.";
+          grade = "F"; gradeDesc = "Potentially unsafe";
         }
-        if (waterF > 75) {
-          if (grade === "A") grade = "B";
-          else if (grade === "B") grade = "C";
-          else if (grade === "C") grade = "D";
-          desc += " Water temperatures are too warm, hurting perch catches.";
+
+        let gradeSubDesc = "";
+        let lowestScore = Math.min(tempScore, windScore, waveScore);
+        if(lowestScore === tempScore && tempScore < 70) {
+          gradeSubDesc += "Water temperature is not ideal.";
+        } else if(lowestScore === windScore && windScore < 70) {
+          gradeSubDesc += "Wind may make fishing difficult.";
+        } else if(lowestScore === waveScore && waveScore < 70) {
+          gradeSubDesc += "High waves may make fishing difficult.";
         }
 
         const gradeDiv = document.getElementById("grade");
         gradeDiv.textContent = grade;
         gradeDiv.className = "grade " + grade;
-        document.getElementById("gradeDesc").textContent = desc;
+
+        document.getElementById("gradeDesc").textContent = gradeDesc;
+        document.getElementById("gradeSubDesc").textContent = gradeSubDesc;
 
         // Charts
         if (waveChart) waveChart.destroy();
@@ -229,6 +251,18 @@
         console.error("Error fetching buoy data:", err);
         document.getElementById("gradeDesc").textContent = "Error loading buoy data.";
       }
+    }
+
+    function tempScoreParabolic(temp, peak = 67, low = 40, high = 72, scale = .8) {
+      const halfWidth = Math.min(peak - low, high - peak);
+      const a = -100 / ((halfWidth / scale) ** 2);
+      let score = a * ((temp - peak) ** 2) + 100;
+
+      // Only clamp if outside the valid range
+      if (temp < low || temp > high) {
+        return 0;
+      }
+      return score;
     }
 
     fetchBuoyData();
